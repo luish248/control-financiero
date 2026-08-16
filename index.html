@@ -5,43 +5,4 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Control Financiero</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f6fa;color:#10203a}button{font:inherit}.app{display:flex;min-height:100vh}.side{width:250px;background:#111a2b;color:#fff;padding:18px 10px}.brand{font-size:22px;font-weight:800;line-height:1.35;margin:0 12px 4px}.sub{font-size:12px;color:#b9c2d2;margin:0 12px 22px}.nav{display:flex;flex-direction:column;gap:4px}.nav button{border:0;background:transparent;color:#fff;text-align:left;padding:12px 12px;border-radius:8px;cursor:pointer}.nav button.active,.nav button:hover{background:#202c40}.main{flex:1;padding:28px;overflow:auto}.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}.title{font-size:30px;font-weight:800;margin:0 0 8px}.subtitle{color:#334766;margin:0}.year{padding:10px 12px;border:1px solid #d5dbe5;border-radius:7px;background:#fff;font-weight:700}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}.card{background:#fff;border:1px solid #e0e4eb;border-radius:12px;padding:17px;box-shadow:0 1px 2px #00000008}.label{font-size:13px;color:#40536f;margin-bottom:7px}.value{font-size:25px;font-weight:800}.green{color:#009b70}.red{color:#ef2227}.section{background:#fff;border:1px solid #e0e4eb;border-radius:12px;padding:16px;margin-bottom:18px}.section h2{margin:0 0 18px;font-size:21px}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px 8px;border-bottom:1px solid #e6e9ee;font-size:14px}.table th{text-align:left}.table th:not(:first-child),.table td.num{text-align:right}.clickable{color:#0758d9;font-weight:600;cursor:pointer;white-space:nowrap}.arrow{display:inline-block;width:14px}.detail-row td{padding:0;border-bottom:1px solid #e6e9ee}.detail{background:#f8fafc;border-left:4px solid #0b62e5;margin:0 8px 10px;padding:12px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 30px}.detail div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e8edf3;color:#243653}.detail b{color:#0b62e5}.modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.module{border:1px solid #dce2ea;border-radius:10px;padding:14px;background:#fff}.module strong{display:block;margin-bottom:6px}.module span{font-size:13px;color:#64748b}.empty{color:#66758a;font-size:13px;padding:10px}.status{font-size:12px;color:#64748b;margin-top:8px}@media(max-width:900px){.side{width:190px}.cards{grid-template-columns:repeat(2,1fr)}.main{padding:18px}}@media(max-width:650px){.app{display:block}.side{width:100%}.cards{grid-template-columns:1fr}.modules{grid-template-columns:1fr}.main{padding:12px}.detail{grid-template-columns:1fr}.table{min-width:720px}.section{overflow:auto}}
-</style>
-</head>
-<body>
-<div class="app">
-<aside class="side"><div class="brand">CONTROL<br>FINANCIERO</div><div class="sub">Basado directamente en tu Excel</div><div class="nav"><button class="active">Inicio</button><button>Ingresos y gastos</button><button>Pagos</button><button>Deudas</button><button>Terreno</button><button>Bolsa TRII</button></div></aside>
-<main class="main">
-<div class="top"><div><h1 class="title">Resumen financiero</h1><p class="subtitle">Datos cargados desde 2.-PAGOS(2).xlsx</p></div><select class="year"><option>2015</option></select></div>
-<div class="cards"><div class="card"><div class="label">Ingresos 2015</div><div class="value green">S/ 42,824.38</div></div><div class="card"><div class="label">Gastos 2015</div><div class="value red">S/ 41,454.45</div></div><div class="card"><div class="label">Balance</div><div class="value green">S/ 1,369.93</div></div><div class="card"><div class="label">Terreno pendiente</div><div class="value red">S/ 0.00</div></div></div>
-<section class="section"><h2>Movimientos 2015</h2><table class="table"><thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Saldo</th></tr></thead><tbody id="rows"></tbody></table></section>
-<section class="section"><h2>Módulos</h2><div class="modules"><div class="module"><strong>Ingresos y gastos</strong><span>Histórico por categorías</span></div><div class="module"><strong>Pagos</strong><span>Registrar pagos</span></div><div class="module"><strong>Deudas</strong><span>Control de deudas</span></div><div class="module"><strong>Terreno</strong><span>Seguimiento</span></div><div class="module"><strong>Bolsa TRII</strong><span>Inversiones</span></div></div></section>
-<div class="status">2015 cargado con los valores del cuadro Excel. Los importes de Gastos excluyen Personal Interbank, igual que el total mostrado en el Excel.</div>
-</main></div>
-<script>
-const incomeNames=['Jornal','Alquiler de carro','Falabella','Otros'];
-const expenseNames=['Luz','Agua','Teléfono/Internet','Celular RPM','Gas','CMR','Interbank','Crédito Scotia','Pandero','Junta','Personal Interbank','Personal Falabella','Varios'];
-const data=[
-['Enero',[1887.89,0,0,0],[116.70,41.85,93.90,161.90,0,500,0,0,0,300,0,0,0]],
-['Febrero',[1887.89,0,8100,150],[141.60,31.52,93.90,161.90,80.20,241.48,515,0,4203.62,300,406.42,0,350]],
-['Marzo',[1861.76,0,0,767.03],[134.80,37.48,93.95,104.90,90.60,262.05,575,0,0,300,406.42,246.07,80]],
-['Abril',[1881.76,0,0,600],[127.70,35.52,93.90,104.90,91.80,108.91,513,130.50,1038.38,300,406.42,246.07,469.50]],
-['Mayo',[1881.76,0,0,0],[122.30,31.52,94.95,104.90,86.50,113.68,513,0,1045.74,300,406.42,246.09,0]],
-['Junio',[1881.76,0,0,0],[112.20,29.62,90.45,104.90,94.55,108.74,510.62,0,1053.58,300,406.42,246.09,474.71]],
-['Julio',[1868.56,0,0,2398],[118.10,33.22,94.80,104.90,85.90,314.50,513.80,0,1054.73,300,406.42,246.09,860]],
-['Agosto',[1020.55,0,0,1408.93],[128,0,94.85,104.90,91.90,324.31,510,0,1063.72,300,406.42,246.09,1298.01]],
-['Setiembre',[2628.30,0,0,2100],[114.70,31.55,95.65,104.90,87.90,53.91,512,0,1071.56,0,406.42,246.09,1500]],
-['Octubre',[2628.31,0,0,0],[114.50,27.22,94.90,104.90,90.40,153.91,250,0,1087.74,0,406.42,246.09,1550]],
-['Noviembre',[2628.31,0,0,0],[123.10,33.82,95.30,104.90,92.80,283.91,200,0,1117,0,406.42,246.09,550]],
-['Diciembre',[2811.45,0,0,2432.12],[120.40,33.89,94.80,104.90,90.80,353.91,5,0,1129.26,0,406.42,246.09,2700]]
-];
-const money=n=>'S/ '+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const rows=document.getElementById('rows');
-data.forEach((d,i)=>{const [m,inc,exp]=d;const income=inc.reduce((a,b)=>a+b,0);const gastos=exp.reduce((a,b)=>a+b,0)-exp[10];const saldo=income-gastos;const sign=saldo<0?'red':'green';
-let tr=document.createElement('tr');tr.innerHTML=`<td>${m}</td><td class="num"><span class="clickable" data-type="income" data-i="${i}">${money(income)} <span class="arrow">▼</span></span></td><td class="num"><span class="clickable" data-type="expense" data-i="${i}">${money(gastos)} <span class="arrow">▼</span></span></td><td class="num ${sign}">${money(saldo)}</td>`;rows.appendChild(tr);
-let dr=document.createElement('tr');dr.className='detail-row';dr.style.display='none';dr.innerHTML='<td colspan="4"><div class="detail"></div></td>';rows.appendChild(dr);d.detailRow=dr;d.openType=null;
-});
-rows.addEventListener('click',e=>{const el=e.target.closest('.clickable');if(!el)return;const i=+el.dataset.i,type=el.dataset.type,d=data[i],dr=d.detailRow,box=dr.querySelector('.detail');if(dr.style.display!=='none'&&d.openType===type){dr.style.display='none';d.openType=null;return;}const names=type==='income'?incomeNames:expenseNames;const vals=type==='income'?d[1]:d[2];box.innerHTML='';names.forEach((name,j)=>{const item=document.createElement('div');item.innerHTML=`<span>${name}</span><b>${money(vals[j])}</b>`;box.appendChild(item)});dr.style.display='table-row';d.openType=type;});
-</script>
-</body>
-</html>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f6fa;color:#10203a}button{font:inherit}.app{display:flex;min-height:100vh}.side{width:250px;background:#111a2b;color:#fff;padding:18px 10px}.brand{font-size:22px;font-weight:800;line-height:1.35;margin:0 12px 4px}.sub{font-size:12px;color:#b9c2
