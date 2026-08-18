@@ -1,0 +1,34 @@
+name: update-terreno
+on:
+  push:
+    paths:
+      - .github/workflows/update-terreno.yml
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update terreno
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path("terreno.html")
+          s=p.read_text(encoding="utf-8")
+          s=s.replace('<div class="field"><label>ESTADO</label><select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select></div>', '<div class="field"><label>ESTADO</label><select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select></div><div class="field"><label>PRECIO DEL TERRENO (S/)</label><input id="landPrice" type="number" min="0" step="0.01" placeholder="Ej.: 50000"></div><div class="field"><label>PRECIO POR HECTÁREA (S/)</label><input id="landPriceHa" type="number" readonly placeholder="Se calcula automáticamente"></div>')
+          s=s.replace("function openLot(){lotName.value='';crop.value='Palma de aceite';lotArea.value='';lotStatus.value='active';plantDate.value='';buyDate.value='';lotNotes.value='';lotModal.classList.remove('hidden')}", "function openLot(){lotName.value='';crop.value='Palma de aceite';lotArea.value='';lotStatus.value='active';plantDate.value='';buyDate.value='';lotNotes.value='';if(document.getElementById('landPrice'))landPrice.value='';if(document.getElementById('landPriceHa'))landPriceHa.value='';lotModal.classList.remove('hidden')}")
+          s=s.replace("const name=lotName.value.trim(), cropName=crop.value.trim(), areaN=Number(lotArea.value);", "const name=lotName.value.trim(), cropName=crop.value.trim(), areaN=Number(lotArea.value), landPriceN=Number(document.getElementById('landPrice')?.value||0);")
+          s=s.replace("notes:lotNotes.value.trim()});", "notes:lotNotes.value.trim(),landPrice:landPriceN,landPriceHa:areaN?landPriceN/areaN:0});")
+          s=s.replace('<th>Lote</th><th>Cultivo</th><th>Área</th><th>Siembra</th>', '<th>Lote</th><th>Cultivo</th><th>Área</th><th>Precio terreno</th><th>S/ por ha</th><th>Siembra</th>')
+          s=s.replace("<td>${l.crop}</td><td>${l.area} ha</td><td>${l.plantDate?formatDate(l.plantDate):'—'}</td>", "<td>${l.crop}</td><td>${l.area} ha</td><td>${money(l.landPrice)}</td><td>${money(l.landPriceHa||((Number(l.landPrice)||0)/Number(l.area||1)))}</td><td>${l.plantDate?formatDate(l.plantDate):'—'}</td>")
+          s=s.replace('<p style="font-size:11px">Siembra: <b>${formatDate(l.plantDate)}</b> · Compra: <b>${formatDate(l.buyDate)}</b></p>', '<p style="font-size:11px">Siembra: <b>${formatDate(l.plantDate)}</b> · Compra: <b>${formatDate(l.buyDate)}</b></p><p style="font-size:11px">Costo del terreno: <b>${money(l.landPrice)}</b> · Costo por hectárea: <b>${money(l.landPriceHa||((Number(l.landPrice)||0)/Number(l.area||1)))}</b></p>')
+          p.write_text(s,encoding="utf-8")
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add terreno.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Mejorar registro de costo del terreno"
+          git push
