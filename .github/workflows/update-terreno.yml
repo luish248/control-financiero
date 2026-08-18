@@ -17,8 +17,13 @@ jobs:
           p=Path("terreno.html")
           s=p.read_text(encoding="utf-8")
 
-          # Precio del terreno en el formulario y cálculo por hectárea.
-          s=s.replace('<div class="field"><label>ESTADO</label><select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select></div>', '<div class="field"><label>ESTADO</label><select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select></div><div class="field"><label>PRECIO DEL TERRENO (S/)</label><input id="landPrice" type="number" min="0" step="0.01" placeholder="Ej.: 50000"></div><div class="field"><label>PRECIO POR HECTÁREA (S/)</label><input id="landPriceHa" type="number" readonly placeholder="Se calcula automáticamente"></div>')
+          land_block='<div class="field"><label>PRECIO DEL TERRENO (S/)</label><input id="landPrice" type="number" min="0" step="0.01" placeholder="Ej.: 50000"></div><div class="field"><label>PRECIO POR HECTÁREA (S/)</label><input id="landPriceHa" type="number" readonly placeholder="Se calcula automáticamente"></div>'
+          # El archivo ya puede tener estos campos; nunca los dupliques.
+          s=s.replace(land_block+land_block,land_block)
+          if 'id="landPrice"' not in s:
+            marker='<div class="field"><label>ESTADO</label><select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select></div>'
+            s=s.replace(marker,marker+land_block)
+
           s=s.replace("function openLot(){lotName.value='';crop.value='Palma de aceite';lotArea.value='';lotStatus.value='active';plantDate.value='';buyDate.value='';lotNotes.value='';lotModal.classList.remove('hidden')}", "function openLot(){lotName.value='';crop.value='Palma de aceite';lotArea.value='';lotStatus.value='active';plantDate.value='';buyDate.value='';lotNotes.value='';if(document.getElementById('landPrice'))landPrice.value='';if(document.getElementById('landPriceHa'))landPriceHa.value='';lotModal.classList.remove('hidden')}")
           s=s.replace("const name=lotName.value.trim(), cropName=crop.value.trim(), areaN=Number(lotArea.value);", "const name=lotName.value.trim(), cropName=crop.value.trim(), areaN=Number(lotArea.value), landPriceN=Number(document.getElementById('landPrice')?.value||0);")
           s=s.replace("notes:lotNotes.value.trim()});", "notes:lotNotes.value.trim(),landPrice:landPriceN,landPriceHa:areaN?landPriceN/areaN:0});")
@@ -39,7 +44,6 @@ jobs:
           s=s.replace(old,new)
 
           s=s.replace("const t=lotTotals(l),r=t.sales-t.expense;", "const t=lotTotals(l),r=t.sales-t.investment;")
-
           s=s.replace('<div class="section-title2">Resultado</div><p style="font-size:14px;font-weight:800" class="${r<0?\'red\':\'green\'}">${money(r)}</p>', '<div class="section-title2">Inversión total</div><p style="font-size:14px;font-weight:800">${money(t.investment)}</p><p style="font-size:11px">Terreno: <b>${money(t.land)}</b> · Gastos agrícolas: <b>${money(t.expense)}</b></p><div class="section-title2">Resultado</div><p style="font-size:14px;font-weight:800" class="${r<0?\'red\':\'green\'}">${money(r)}</p>')
 
           p.write_text(s,encoding="utf-8")
@@ -49,5 +53,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add terreno.html
           git diff --cached --quiet && exit 0
-          git commit -m "Incluir costo del terreno en la inversion"
+          git commit -m "Ajustar inversion total del terreno"
           git push
