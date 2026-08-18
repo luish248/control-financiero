@@ -2,7 +2,7 @@ name: Ajuste categorias ingresos
 
 on:
   push:
-    branches: [principal]
+    branches: [main]
 
 permissions:
   contents: write
