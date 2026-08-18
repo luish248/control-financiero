@@ -1,0 +1,34 @@
+name: Aplicar identidad LHG SYSTEM
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Renombrar modulos y aplicar logo
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+          files = list(Path('.').glob('*.html'))
+          for p in files:
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('↕ &nbsp; Ingresos y gastos', '↕ &nbsp; Movimientos')
+              s = s.replace('⌖ &nbsp; Terreno', '⌖ &nbsp; Patrimonio')
+              s = s.replace('▥ &nbsp; Bolsa TRII', '▥ &nbsp; Inversiones')
+              s = s.replace('<div class="logo">🌴</div>', '<img class="brand-logo" src="lhg-logo.svg" alt="LHG System">')
+              s = s.replace('<b>CONTROL<br>FINANCIERO</b><small>Panel de control</small>', '<b>LHG SYSTEM</b><small>Innovación · Control · Resultados</small>')
+              if '.brand-logo{' not in s:
+                  s = s.replace('.logo{', '.brand-logo{width:172px;height:62px;object-fit:contain;object-position:left center;display:block}.logo{', 1)
+              p.write_text(s, encoding='utf-8')
+          subprocess.run(['git','config','user.name','github-actions[bot]'], check=True)
+          subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git','add'] + [str(x) for x in files], check=True)
+          r = subprocess.run(['git','diff','--cached','--quiet'])
+          if r.returncode != 0:
+              subprocess.run(['git','commit','-m','Renombrar modulos y aplicar logo LHG SYSTEM'], check=True)
+              subprocess.run(['git','push'], check=True)
