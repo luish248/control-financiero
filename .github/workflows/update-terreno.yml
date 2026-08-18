@@ -14,24 +14,28 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
           p=Path("terreno.html")
           s=p.read_text(encoding="utf-8")
 
           land_block='<div class="field"><label>PRECIO DEL TERRENO (S/)</label><input id="landPrice" type="number" min="0" step="0.01" placeholder="Ej.: 50000"></div><div class="field"><label>PRECIO POR HECTÁREA (S/)</label><input id="landPriceHa" type="number" readonly placeholder="Se calcula automáticamente"></div>'
-          # El archivo ya puede tener estos campos; nunca los dupliques.
-          s=s.replace(land_block+land_block,land_block)
+          # Mantener una sola copia de los campos de precio.
+          s=re.sub(re.escape(land_block)+r'(?:'+re.escape(land_block)+r')+',land_block,s)
           if 'id="landPrice"' not in s:
             marker='<div class="field"><label>ESTADO</label><select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select></div>'
             s=s.replace(marker,marker+land_block)
 
           s=s.replace("function openLot(){lotName.value='';crop.value='Palma de aceite';lotArea.value='';lotStatus.value='active';plantDate.value='';buyDate.value='';lotNotes.value='';lotModal.classList.remove('hidden')}", "function openLot(){lotName.value='';crop.value='Palma de aceite';lotArea.value='';lotStatus.value='active';plantDate.value='';buyDate.value='';lotNotes.value='';if(document.getElementById('landPrice'))landPrice.value='';if(document.getElementById('landPriceHa'))landPriceHa.value='';lotModal.classList.remove('hidden')}")
+
+          # Asegurar que guardar/editar conserve el precio del terreno.
           s=s.replace("const name=lotName.value.trim(), cropName=crop.value.trim(), areaN=Number(lotArea.value);", "const name=lotName.value.trim(), cropName=crop.value.trim(), areaN=Number(lotArea.value), landPriceN=Number(document.getElementById('landPrice')?.value||0);")
           s=s.replace("notes:lotNotes.value.trim()});", "notes:lotNotes.value.trim(),landPrice:landPriceN,landPriceHa:areaN?landPriceN/areaN:0});")
+
+          # Encabezados y columnas de costo por lote.
           s=s.replace('<th>Lote</th><th>Cultivo</th><th>Área</th><th>Siembra</th>', '<th>Lote</th><th>Cultivo</th><th>Área</th><th>Precio terreno</th><th>S/ por ha</th><th>Siembra</th>')
           s=s.replace("<td>${l.crop}</td><td>${l.area} ha</td><td>${l.plantDate?formatDate(l.plantDate):'—'}</td>", "<td>${l.crop}</td><td>${l.area} ha</td><td>${money(l.landPrice)}</td><td>${money(l.landPriceHa||((Number(l.landPrice)||0)/Number(l.area||1)))}</td><td>${l.plantDate?formatDate(l.plantDate):'—'}</td>")
-          s=s.replace('<p style="font-size:11px">Siembra: <b>${formatDate(l.plantDate)}</b> · Compra: <b>${formatDate(l.buyDate)}</b></p>', '<p style="font-size:11px">Siembra: <b>${formatDate(l.plantDate)}</b> · Compra: <b>${formatDate(l.buyDate)}</b></p><p style="font-size:11px">Costo del terreno: <b>${money(l.landPrice)}</b> · Costo por hectárea: <b>${money(l.landPriceHa||((Number(l.landPrice)||0)/Number(l.area||1)))}</b></p>')
 
-          # El precio del terreno pasa a formar parte de la inversión real del lote.
+          # El precio del terreno forma parte de la inversión total.
           s=s.replace('<label>Inversión / gastos</label><strong id="spent" class="red">S/ 0.00</strong><small>Registrados en Terreno</small>', '<label>Inversión total</label><strong id="spent" class="red">S/ 0.00</strong><small>Terreno + gastos agrícolas</small>')
           s=s.replace('<th>Estado</th><th>Gastos</th><th>Ventas</th><th>Resultado</th>', '<th>Estado</th><th>Gastos agrícolas</th><th>Ventas</th><th>Resultado</th>')
 
@@ -39,12 +43,22 @@ jobs:
           new="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);const expense=a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales=a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),land=Number(l.landPrice||0);return{expense,sales,land,investment:land+expense,acts:a}}"""
           s=s.replace(old,new)
 
+          # Inversión global = compra de terrenos + gastos agrícolas.
           old="""const acts=getActs(),spent=acts.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales=acts.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0);"""
           new="""const acts=getActs(),sales=acts.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),spent=lots.reduce((s,l)=>s+Number(l.landPrice||0),0)+acts.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0);"""
           s=s.replace(old,new)
-
           s=s.replace("const t=lotTotals(l),r=t.sales-t.expense;", "const t=lotTotals(l),r=t.sales-t.investment;")
-          s=s.replace('<div class="section-title2">Resultado</div><p style="font-size:14px;font-weight:800" class="${r<0?\'red\':\'green\'}">${money(r)}</p>', '<div class="section-title2">Inversión total</div><p style="font-size:14px;font-weight:800">${money(t.investment)}</p><p style="font-size:11px">Terreno: <b>${money(t.land)}</b> · Gastos agrícolas: <b>${money(t.expense)}</b></p><div class="section-title2">Resultado</div><p style="font-size:14px;font-weight:800" class="${r<0?\'red\':\'green\'}">${money(r)}</p>')
+
+          # Limpiar duplicados que puedan haber quedado de actualizaciones anteriores.
+          cost_line='<p style="font-size:11px">Costo del terreno: <b>${money(l.landPrice)}</b> · Costo por hectárea: <b>${money(l.landPriceHa||((Number(l.landPrice)||0)/Number(l.area||1)))}</b></p>'
+          s=s.replace(cost_line+cost_line+cost_line,cost_line)
+          s=s.replace(cost_line+cost_line,cost_line)
+          investment_block='<div class="section-title2">Inversión total</div><p style="font-size:14px;font-weight:800">${money(t.investment)}</p><p style="font-size:11px">Terreno: <b>${money(t.land)}</b> · Gastos agrícolas: <b>${money(t.expense)}</b></p>'
+          s=s.replace(investment_block+investment_block,investment_block)
+
+          # Agregar el detalle de inversión solo si todavía no existe.
+          if 'Inversión total</div><p style="font-size:14px;font-weight:800">${money(t.investment)}' not in s:
+            s=s.replace('<div class="section-title2">Resultado</div><p style="font-size:14px;font-weight:800" class="${r<0?\'red\':\'green\'}">${money(r)}</p>', investment_block+'<div class="section-title2">Resultado</div><p style="font-size:14px;font-weight:800" class="${r<0?\'red\':\'green\'}">${money(r)}</p>')
 
           p.write_text(s,encoding="utf-8")
       - name: Commit changes
@@ -53,5 +67,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add terreno.html
           git diff --cached --quiet && exit 0
-          git commit -m "Ajustar inversion total del terreno"
+          git commit -m "Normalizar inversion y costo del terreno"
           git push
