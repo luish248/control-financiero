@@ -1,0 +1,41 @@
+name: Fix Terreno modal
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ajustar modal de Terreno
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('terreno.html')
+          s = p.read_text(encoding='utf-8')
+          old = '.modal-card{background:#fff;border-radius:14px;width:min(760px,100%);max-height:90vh;overflow:auto;padding:20px}'
+          new = '.modal-card{background:#fff;border-radius:14px;width:min(860px,calc(100vw - 32px));max-width:100%;max-height:90vh;overflow:auto;padding:20px}.modal-card .form-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.modal-card .field{min-width:0}.modal-card .field input,.modal-card .field select,.modal-card .field textarea{width:100%;min-width:0;max-width:100%}'
+          if old not in s:
+              raise SystemExit('No se encontró el bloque CSS esperado')
+          s = s.replace(old, new, 1)
+          marker = '@media(max-width:900px){.modal-card .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.modal-card .form-grid{grid-template-columns:1fr}.modal-card .form-grid .field[style*="grid-column:span 4"]{grid-column:span 1}}'
+          anchor = '@media(max-width:1100px)'
+          if marker not in s:
+              s = s.replace('</style>', marker + '\n</style>', 1)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/fix-terreno-modal.yml
+          git add terreno.html .github/workflows/fix-terreno-modal.yml
+          git diff --cached --quiet || git commit -m "Corregir ancho y campos del modal de gastos"
+          git push
