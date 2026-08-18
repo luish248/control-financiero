@@ -28,22 +28,29 @@ jobs:
           new_status='<select id="lotStatus"><option value="preparation">En preparación</option><option value="planted">Sembrado</option><option value="production">En producción</option><option value="finished">Finalizado</option></select>'
           s=s.replace(old_status,new_status)
 
-          # Migrar datos antiguos: active -> preparation, projected -> preparation.
+          # Migrar datos antiguos: active/projected pasan a preparación.
           s=s.replace("status:'active',plantDate:'2026-11-01'", "status:'preparation',plantDate:'2026-11-01'")
           s=s.replace("status:'projected'", "status:'preparation'")
           s=s.replace("l?.status||'active'", "l?.status||'preparation'")
 
-          # Etiqueta de estado en la tabla y en el detalle.
+          # Etiqueta de estado en tabla/detalle.
           old_expr="${l.status==='projected'?'Proyectado':'Actual'}"
           new_expr="${({preparation:'En preparación',planted:'Sembrado',production:'En producción',finished:'Finalizado'}[l.status]||'En preparación')}"
           s=s.replace(old_expr,new_expr)
           s=s.replace("class=\"tag ${l.status==='projected'?'projected':''}\"", "class=\"tag\"")
           s=s.replace("class=\"${l.status==='projected'?'orange':'green'}\">${l.status==='projected'?'Proyectado':'Actual'}", "class=\"green\">${({preparation:'En preparación',planted:'Sembrado',production:'En producción',finished:'Finalizado'}[l.status]||'En preparación')}")
 
-          # La proyección de 2027 se conserva como plan, no como lote proyectado.
-          s=s.replace("<small>Actuales y proyectados</small>", "<small>Lotes en ciclo agrícola</small>")
-          s=s.replace("<small>Área proyectada</small>", "<small>Área en plan 2027</small>")
-          s=s.replace("Lotes actuales y proyectados.", "Lotes registrados por etapa agrícola y plan de expansión 2027.")
+          # Resumen: eliminar Área proyectada y dejar indicadores reales.
+          projected_kpi=re.compile(r'<article class="kpi"><label>Área proyectada</label>.*?</article>')
+          s=projected_kpi.sub('',s,count=1)
+          s=s.replace('.kpis{display:grid;grid-template-columns:repeat(5,1fr);', '.kpis{display:grid;grid-template-columns:repeat(4,1fr);')
+          s=s.replace('<small>Actuales y proyectados</small>', '<small>Lotes en ciclo agrícola</small>')
+          s=s.replace('<small>Compras futuras</small>', '<small>Terrenos registrados</small>')
+
+          # La pantalla principal ya no presenta un lote futuro como si existiera.
+          expansion=re.compile(r'<section class="panel"><h2 class="panel-title">Proyección de crecimiento.*?</section>')
+          expansion_html='''<section class="panel"><h2 class="panel-title">Expansión agrícola <small>Plan futuro</small></h2><div style="display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center"><div><div class="section-title2" style="margin-top:0">Terreno adicional en evaluación</div><p class="muted" style="font-size:11px;margin:0">Aquí puedes registrar oportunidades de compra futuras sin convertirlas en lotes reales ni afectar la inversión, gastos o rentabilidad actuales.</p></div><button class="secondary" type="button" onclick="alert('El registro de expansión se incorporará en el siguiente paso.')">＋ Nuevo proyecto de expansión</button></div></section>'''
+          s=expansion.sub(expansion_html,s,count=1)
 
           # Inversión global = costo de todos los terrenos + gastos agrícolas.
           expense_expr=r"spent=acts\.filter\(x=>x\.type==='expense'\)\.reduce\(\(s,x\)=>s\+Number\(x\.amount\),0\)"
@@ -65,8 +72,8 @@ jobs:
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add terreno.html
           git diff --cached --quiet && exit 0
-          git commit -m "Actualizar estados del modulo Terreno"
+          git commit -m "Actualizar resumen y expansion del modulo Terreno"
           git push
