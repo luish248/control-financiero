@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - .github/workflows/update-terreno.yml
+  workflow_dispatch:
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -18,18 +19,41 @@ jobs:
           p=Path("terreno.html")
           s=p.read_text(encoding="utf-8")
 
+          # Mantener un solo bloque de precio del terreno y precio por hectarea.
           land_block='<div class="field"><label>PRECIO DEL TERRENO (S/)</label><input id="landPrice" type="number" min="0" step="0.01" placeholder="Ej.: 50000"></div><div class="field"><label>PRECIO POR HECTÁREA (S/)</label><input id="landPriceHa" type="number" readonly placeholder="Se calcula automáticamente"></div>'
           s=re.sub(re.escape(land_block)+r'(?:'+re.escape(land_block)+r')+',land_block,s)
+
+          # Estados reales del ciclo del lote: no usar "Compra proyectada".
+          old_status='<select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select>'
+          new_status='<select id="lotStatus"><option value="preparation">En preparación</option><option value="planted">Sembrado</option><option value="production">En producción</option><option value="finished">Finalizado</option></select>'
+          s=s.replace(old_status,new_status)
+
+          # Migrar datos antiguos: active -> preparation, projected -> preparation.
+          s=s.replace("status:'active',plantDate:'2026-11-01'", "status:'preparation',plantDate:'2026-11-01'")
+          s=s.replace("status:'projected'", "status:'preparation'")
+          s=s.replace("l?.status||'active'", "l?.status||'preparation'")
+
+          # Etiqueta de estado en la tabla y en el detalle.
+          old_expr="${l.status==='projected'?'Proyectado':'Actual'}"
+          new_expr="${({preparation:'En preparación',planted:'Sembrado',production:'En producción',finished:'Finalizado'}[l.status]||'En preparación')}"
+          s=s.replace(old_expr,new_expr)
+          s=s.replace("class=\"tag ${l.status==='projected'?'projected':''}\"", "class=\"tag\"")
+          s=s.replace("class=\"${l.status==='projected'?'orange':'green'}\">${l.status==='projected'?'Proyectado':'Actual'}", "class=\"green\">${({preparation:'En preparación',planted:'Sembrado',production:'En producción',finished:'Finalizado'}[l.status]||'En preparación')}")
+
+          # La proyección de 2027 se conserva como plan, no como lote proyectado.
+          s=s.replace("<small>Actuales y proyectados</small>", "<small>Lotes en ciclo agrícola</small>")
+          s=s.replace("<small>Área proyectada</small>", "<small>Área en plan 2027</small>")
+          s=s.replace("Lotes actuales y proyectados.", "Lotes registrados por etapa agrícola y plan de expansión 2027.")
 
           # Inversión global = costo de todos los terrenos + gastos agrícolas.
           expense_expr=r"spent=acts\.filter\(x=>x\.type==='expense'\)\.reduce\(\(s,x\)=>s\+Number\(x\.amount\),0\)"
           replacement="spent=lots.reduce((s,l)=>s+Number(l.landPrice||0),0)+acts.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0)"
           s=re.sub(expense_expr,replacement,s)
 
-          # Asegurar el cálculo por lote y evitar duplicados en el detalle.
-          old="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);return{expense:a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales:a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),acts:a}}"""
-          new="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);const expense=a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales=a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),land=Number(l.landPrice||0);return{expense,sales,land,investment:land+expense,acts:a}}"""
-          s=s.replace(old,new)
+          # Calculo por lote incluyendo el terreno dentro de la inversion.
+          old_totals="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);return{expense:a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales:a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),acts:a}}"""
+          new_totals="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);const expense=a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales=a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),land=Number(l.landPrice||0);return{expense,sales,land,investment:land+expense,acts:a}}"""
+          s=s.replace(old_totals,new_totals)
           s=s.replace("const t=lotTotals(l),r=t.sales-t.expense;", "const t=lotTotals(l),r=t.sales-t.investment;")
 
           cost_line='<p style="font-size:11px">Costo del terreno: <b>${money(l.landPrice)}</b> · Costo por hectárea: <b>${money(l.landPriceHa||((Number(l.landPrice)||0)/Number(l.area||1)))}</b></p>'
@@ -41,8 +65,8 @@ jobs:
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+users.noreply.github.com"
           git add terreno.html
           git diff --cached --quiet && exit 0
-          git commit -m "Corregir inversion global del terreno"
+          git commit -m "Actualizar estados del modulo Terreno"
           git push
