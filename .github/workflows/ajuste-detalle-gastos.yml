@@ -1,0 +1,56 @@
+name: Ajustar detalle de gastos
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  ajuste:
+    if: ${{ !contains(github.event.head_commit.message, 'Ajustar detalle de gastos') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Actualizar formulario de gastos
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_html = '''<div class="form-grid" style="margin-top:12px"><div class="field" style="grid-column:span 2"><label>DESCRIPCIÓN / NOTA</label><input id="fDescription" type="text" placeholder="Ej.: prueba de movimiento"></div></div>'''
+          new_html = '''<div class="form-grid" style="margin-top:12px"><div class="field" style="grid-column:span 2"><label>DESCRIPCIÓN / DETALLE</label><div id="descriptionTextWrap"><input id="fDescription" type="text" placeholder="Ej.: prueba de movimiento"></div><div id="descriptionSelectWrap" class="hidden"><select id="fDescriptionSelect"></select><div class="category-help">Para gastos, el detalle se selecciona según la categoría. La última opción permite agregar uno nuevo.</div></div></div></div>'''
+          s = s.replace(old_html, new_html)
+
+          old_constants = "const expenseCats=['Alimentación','Servicios','Transporte','Tarjetas de crédito','Préstamos','Vivienda','Salud','Gastos varios'];\nconst key='controlFinancieroMovimientosV1',catKey='controlFinancieroIncomeCatsV1';"
+          new_constants = "const expenseCats=['Alimentación','Servicios','Transporte','Tarjetas de crédito','Préstamos','Vivienda','Salud','Gastos varios'];\nconst defaultExpenseSubcats={\n  'Alimentación':['Desayuno','Almuerzo','Cena','Compras de alimentos','Otros'],\n  'Servicios':['Agua','Luz','Gas','Internet','Celular','Otros servicios'],\n  'Transporte':['Pasajes','Taxi','Combustible','Mantenimiento','Otros'],\n  'Tarjetas de crédito':['Pago de tarjeta','Intereses','Comisión','Otros'],\n  'Préstamos':['Cuota de préstamo','Intereses','Comisión','Otros'],\n  'Vivienda':['Alquiler','Mantenimiento','Reparaciones','Otros'],\n  'Salud':['Consulta médica','Medicinas','Exámenes','Seguro','Otros'],\n  'Gastos varios':['Compras','Ropa','Educación','Entretenimiento','Otros']\n};\nconst key='controlFinancieroMovimientosV1',catKey='controlFinancieroIncomeCatsV1',expenseSubcatKey='controlFinancieroExpenseSubcatsV1';"
+          s = s.replace(old_constants, new_constants)
+
+          old_render = '''function renderCategories(){const el=document.getElementById('fCategory');const cats=selectedType==='ingreso'?incomeCategories():expenseCats;el.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('')+`<option value="__add__">＋ Agregar categoría...</option>`;el.onchange=()=>{if(el.value==='__add__')addIncomeCategory()}}'''
+          new_render = '''function expenseSubcategories(){try{const saved=JSON.parse(localStorage.getItem(expenseSubcatKey)||'null')||{};const result={};Object.keys(defaultExpenseSubcats).forEach(c=>{result[c]=Array.isArray(saved[c])&&saved[c].length?saved[c]:defaultExpenseSubcats[c].slice()});return result}catch(e){return JSON.parse(JSON.stringify(defaultExpenseSubcats))}}\nfunction saveExpenseSubcategories(v){localStorage.setItem(expenseSubcatKey,JSON.stringify(v))}\nfunction renderDescriptionField(preserve=''){const textWrap=document.getElementById('descriptionTextWrap'),selectWrap=document.getElementById('descriptionSelectWrap'),select=document.getElementById('fDescriptionSelect');if(selectedType==='gasto'){textWrap.classList.add('hidden');selectWrap.classList.remove('hidden');const category=document.getElementById('fCategory').value;const cats=expenseSubcategories()[category]||['Otros'];select.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('')+`<option value="__add__">＋ Agregar detalle...</option>`;if(preserve&&cats.includes(preserve))select.value=preserve}else{textWrap.classList.remove('hidden');selectWrap.classList.add('hidden')}}\nfunction addExpenseSubcategory(){const category=document.getElementById('fCategory').value;if(!category||category==='__add__')return;const name=prompt(`Escribe el nuevo detalle para ${category}:`);const clean=(name||'').trim();if(!clean){renderDescriptionField();return}const all=expenseSubcategories(),cats=all[category]||[];const exists=cats.some(c=>c.toLowerCase()===clean.toLowerCase());if(exists){alert('Ese detalle ya existe.');renderDescriptionField(clean);return}cats.push(clean);all[category]=cats;saveExpenseSubcategories(all);renderDescriptionField(clean)}\nfunction addExpenseCategory(){const name=prompt('Escribe el nombre de la nueva categoría de gasto:');const clean=(name||'').trim();const el=document.getElementById('fCategory');if(!clean){renderCategories();return}const exists=expenseCats.some(c=>c.toLowerCase()===clean.toLowerCase());if(exists){alert('Esa categoría ya existe.');renderCategories();el.value=expenseCats.find(c=>c.toLowerCase()===clean.toLowerCase());renderDescriptionField();return}expenseCats.push(clean);const all=expenseSubcategories();all[clean]=['Otros'];saveExpenseSubcategories(all);renderCategories();el.value=clean;renderDescriptionField()}\nfunction renderCategories(){const el=document.getElementById('fCategory');const cats=selectedType==='ingreso'?incomeCategories():expenseCats;el.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('')+`<option value="__add__">＋ Agregar categoría...</option>`;el.onchange=()=>{if(el.value==='__add__'){selectedType==='ingreso'?addIncomeCategory():addExpenseCategory();return}if(selectedType==='gasto')renderDescriptionField()};if(selectedType==='gasto')renderDescriptionField()}'''
+          s = s.replace(old_render, new_render)
+
+          old_type = "function setType(type){selectedType=type;document.getElementById('incomeTab').classList.toggle('active',type==='ingreso');document.getElementById('expenseTab').classList.toggle('active',type==='gasto');renderCategories()}"
+          new_type = "function setType(type){selectedType=type;document.getElementById('incomeTab').classList.toggle('active',type==='ingreso');document.getElementById('expenseTab').classList.toggle('active',type==='gasto');renderCategories();renderDescriptionField()}"
+          s = s.replace(old_type, new_type)
+
+          old_save = "function saveMovement(){const year=Number(fYear.value),month=Number(fMonth.value),category=fCategory.value,amount=Number(fAmount.value),description=fDescription.value.trim();if(category==='__add__'){addIncomeCategory();return}if(!amount||amount<=0){alert('Ingresa un monto mayor que 0.');return}const list=data();list.push({id:Date.now()+Math.random(),year,month,type:selectedType,category,amount,description});saveData(list);fAmount.value='';fDescription.value='';movementYear.value=String(year);yearSelect(year);renderRecords();renderHome();alert('Movimiento guardado correctamente.')}"
+          new_save = "function saveMovement(){const year=Number(fYear.value),month=Number(fMonth.value),category=fCategory.value,amount=Number(fAmount.value),description=selectedType==='gasto'?document.getElementById('fDescriptionSelect').value:document.getElementById('fDescription').value.trim();if(category==='__add__'){selectedType==='ingreso'?addIncomeCategory():addExpenseCategory();return}if(selectedType==='gasto'&&description==='__add__'){addExpenseSubcategory();return}if(!amount||amount<=0){alert('Ingresa un monto mayor que 0.');return}const list=data();list.push({id:Date.now()+Math.random(),year,month,type:selectedType,category,amount,description});saveData(list);fAmount.value='';fDescription.value='';document.getElementById('fDescriptionSelect').value='';movementYear.value=String(year);yearSelect(year);renderRecords();renderHome();alert('Movimiento guardado correctamente.')}"
+          s = s.replace(old_save, new_save)
+
+          old_clear = "function clearForm(){fAmount.value='';fDescription.value=''}"
+          new_clear = "function clearForm(){fAmount.value='';fDescription.value='';if(selectedType==='gasto')renderDescriptionField()}"
+          s = s.replace(old_clear, new_clear)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Guardar cambio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Ajustar detalle de gastos"
+          git push
