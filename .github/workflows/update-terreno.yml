@@ -19,45 +19,37 @@ jobs:
           p=Path("terreno.html")
           s=p.read_text(encoding="utf-8")
 
-          # Mantener un solo bloque de precio del terreno y precio por hectarea.
           land_block='<div class="field"><label>PRECIO DEL TERRENO (S/)</label><input id="landPrice" type="number" min="0" step="0.01" placeholder="Ej.: 50000"></div><div class="field"><label>PRECIO POR HECTÁREA (S/)</label><input id="landPriceHa" type="number" readonly placeholder="Se calcula automáticamente"></div>'
           s=re.sub(re.escape(land_block)+r'(?:'+re.escape(land_block)+r')+',land_block,s)
 
-          # Estados reales del ciclo del lote: no usar "Compra proyectada".
           old_status='<select id="lotStatus"><option value="active">Actual / por sembrar</option><option value="projected">Compra proyectada</option></select>'
           new_status='<select id="lotStatus"><option value="preparation">En preparación</option><option value="planted">Sembrado</option><option value="production">En producción</option><option value="finished">Finalizado</option></select>'
           s=s.replace(old_status,new_status)
-
-          # Migrar datos antiguos: active/projected pasan a preparación.
           s=s.replace("status:'active',plantDate:'2026-11-01'", "status:'preparation',plantDate:'2026-11-01'")
           s=s.replace("status:'projected'", "status:'preparation'")
           s=s.replace("l?.status||'active'", "l?.status||'preparation'")
 
-          # Etiqueta de estado en tabla/detalle.
           old_expr="${l.status==='projected'?'Proyectado':'Actual'}"
           new_expr="${({preparation:'En preparación',planted:'Sembrado',production:'En producción',finished:'Finalizado'}[l.status]||'En preparación')}"
           s=s.replace(old_expr,new_expr)
           s=s.replace("class=\"tag ${l.status==='projected'?'projected':''}\"", "class=\"tag\"")
           s=s.replace("class=\"${l.status==='projected'?'orange':'green'}\">${l.status==='projected'?'Proyectado':'Actual'}", "class=\"green\">${({preparation:'En preparación',planted:'Sembrado',production:'En producción',finished:'Finalizado'}[l.status]||'En preparación')}")
 
-          # Resumen: eliminar Área proyectada y dejar indicadores reales.
           projected_kpi=re.compile(r'<article class="kpi"><label>Área proyectada</label>.*?</article>')
           s=projected_kpi.sub('',s,count=1)
           s=s.replace('.kpis{display:grid;grid-template-columns:repeat(5,1fr);', '.kpis{display:grid;grid-template-columns:repeat(4,1fr);')
+          s=s.replace('<small>Lotes activos</small>', '<small>Terreno que ya tienes</small>')
           s=s.replace('<small>Actuales y proyectados</small>', '<small>Lotes en ciclo agrícola</small>')
           s=s.replace('<small>Compras futuras</small>', '<small>Terrenos registrados</small>')
 
-          # La pantalla principal ya no presenta un lote futuro como si existiera.
           expansion=re.compile(r'<section class="panel"><h2 class="panel-title">Proyección de crecimiento.*?</section>')
           expansion_html='''<section class="panel"><h2 class="panel-title">Expansión agrícola <small>Plan futuro</small></h2><div style="display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center"><div><div class="section-title2" style="margin-top:0">Terreno adicional en evaluación</div><p class="muted" style="font-size:11px;margin:0">Aquí puedes registrar oportunidades de compra futuras sin convertirlas en lotes reales ni afectar la inversión, gastos o rentabilidad actuales.</p></div><button class="secondary" type="button" onclick="alert('El registro de expansión se incorporará en el siguiente paso.')">＋ Nuevo proyecto de expansión</button></div></section>'''
           s=expansion.sub(expansion_html,s,count=1)
 
-          # Inversión global = costo de todos los terrenos + gastos agrícolas.
           expense_expr=r"spent=acts\.filter\(x=>x\.type==='expense'\)\.reduce\(\(s,x\)=>s\+Number\(x\.amount\),0\)"
           replacement="spent=lots.reduce((s,l)=>s+Number(l.landPrice||0),0)+acts.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0)"
           s=re.sub(expense_expr,replacement,s)
 
-          # Calculo por lote incluyendo el terreno dentro de la inversion.
           old_totals="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);return{expense:a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales:a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),acts:a}}"""
           new_totals="""function lotTotals(l){const a=getActs().filter(x=>x.lotId===l.id);const expense=a.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0),sales=a.filter(x=>x.type==='sale').reduce((s,x)=>s+Number(x.amount),0),land=Number(l.landPrice||0);return{expense,sales,land,investment:land+expense,acts:a}}"""
           s=s.replace(old_totals,new_totals)
@@ -68,6 +60,12 @@ jobs:
           investment_block='<div class="section-title2">Inversión total</div><p style="font-size:14px;font-weight:800">${money(t.investment)}</p><p style="font-size:11px">Terreno: <b>${money(t.land)}</b> · Gastos agrícolas: <b>${money(t.expense)}</b></p>'
           s=re.sub(re.escape(investment_block)+r'(?:'+re.escape(investment_block)+r')+',investment_block,s)
 
+          # Parche visual robusto: el área actual se calcula desde los lotes reales mostrados en la tabla.
+          marker='<!-- TERRAIN_SUMMARY_PATCH -->'
+          s=re.sub(re.escape(marker)+r'.*?<!-- /TERRAIN_SUMMARY_PATCH -->','',s,flags=re.S)
+          patch='''<!-- TERRAIN_SUMMARY_PATCH --><script>(function(){function syncArea(){var tb=document.getElementById('lots'),el=document.getElementById('area');if(!tb||!el)return;var total=0;tb.querySelectorAll('tr').forEach(function(tr){var c=tr.querySelectorAll('td');if(c.length>=3){var n=parseFloat((c[2].textContent||'').replace(/[^0-9.,-]/g,'').replace(/,/g,''));if(!isNaN(n))total+=n;}});el.textContent=total.toLocaleString('es-PE',{maximumFractionDigits:2})+' ha';}window.addEventListener('load',function(){setTimeout(syncArea,100);var tb=document.getElementById('lots');if(tb)new MutationObserver(syncArea).observe(tb,{childList:true,subtree:true});});})();</script><!-- /TERRAIN_SUMMARY_PATCH -->'''
+          s=s.replace('</body>',patch+'</body>',1)
+
           p.write_text(s,encoding="utf-8")
       - name: Commit changes
         run: |
@@ -75,5 +73,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add terreno.html
           git diff --cached --quiet && exit 0
-          git commit -m "Actualizar resumen y expansion del modulo Terreno"
+          git commit -m "Corregir area real del modulo Terreno"
           git push
