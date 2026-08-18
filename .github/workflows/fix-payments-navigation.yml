@@ -1,0 +1,39 @@
+name: Fix Pagos navigation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message != 'fix: connect Pagos navigation'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Connect Pagos button
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "function showPage(page){homePage.classList.toggle('hidden',page!=='home');movementsPage.classList.toggle('hidden',page!=='movements');placeholderPage.classList.toggle('hidden',!['payments','debts','land','trii','reports','settings'].includes(page));const titles={payments:'Pagos',debts:'Deudas',land:'Terreno',trii:'Bolsa TRII',reports:'Reportes',settings:'Configuración'};if(titles[page])placeholderTitle.textContent=titles[page];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='movements')renderRecords()}"
+          new = "function showPage(page){if(page==='payments'){window.location.href='/pagos.html';return}homePage.classList.toggle('hidden',page!=='home');movementsPage.classList.toggle('hidden',page!=='movements');placeholderPage.classList.toggle('hidden',!['debts','land','trii','reports','settings'].includes(page));const titles={debts:'Deudas',land:'Terreno',trii:'Bolsa TRII',reports:'Reportes',settings:'Configuración'};if(titles[page])placeholderTitle.textContent=titles[page];document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='movements')renderRecords()}"
+          if old not in s:
+              raise SystemExit('showPage target not found; no changes made')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: connect Pagos navigation"
+          git push
