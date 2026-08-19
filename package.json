@@ -1,0 +1,7 @@
+{
+  "name":"control-financiero",
+  "private":true,
+  "dependencies":{
+    "@vercel/functions":"latest"
+  }
+}
