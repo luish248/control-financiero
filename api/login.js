@@ -1,7 +1,7 @@
 const SUPABASE_URL='https://mkjezbifyvmatfgdbesu.supabase.co';
 const SUPABASE_KEY='sb_publishable_t-wH4CzgzNrS_TyWgZ-Qow_2r6MzbbL';
 
-export default async function handler(req,res){
+module.exports=async function handler(req,res){
   if(req.method!=='POST') return res.status(405).json({error:'Método no permitido.'});
   try{
     const {email,password}=typeof req.body==='string'?JSON.parse(req.body):req.body||{};
