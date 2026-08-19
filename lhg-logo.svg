@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 110">
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b2b6b"/><stop offset=".55" stop-color="#007fe8"/><stop offset="1" stop-color="#00c8ff"/></linearGradient></defs>
-<rect width="360" height="110" fill="none"/>
-<g transform="translate(8 4)"><circle cx="62" cy="50" r="45" fill="none" stroke="url(#g)" stroke-width="7"/><path d="M32 20v60h22V55h16v25h22V20H70v18H54V20z" fill="url(#g)"/><path d="M82 35l16-11v54L82 71z" fill="#08265f" opacity=".9"/></g>
-<text x="125" y="58" font-family="Arial,sans-serif" font-size="52" font-weight="800" font-style="italic" fill="url(#g)">LHG</text>
-<text x="127" y="81" font-family="Arial,sans-serif" font-size="17" letter-spacing="5" fill="#0b2b6b">SYSTEM</text>
-<line x1="125" y1="89" x2="338" y2="89" stroke="#08bdf4" stroke-width="3"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 82"><image href="lhg-logo.jpg" x="0" y="0" width="180" height="82" preserveAspectRatio="none"/></svg>
