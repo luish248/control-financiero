@@ -1,1 +1,1 @@
-Aplicar logo LHG SYSTEM proporcionado - 2026-08-19
+Login LHG SYSTEM + Supabase Auth - 2026-08-19 19:55:08 UTC
