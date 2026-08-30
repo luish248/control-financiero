@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://mkjezbifyvmatfgdbesu.supabase.co';
 const SUPABASE_KEY='sb_publishable_t-wH4CzgzNrS_TyWgZ-Qow_2r6MzbbL';
-const ALLOWED=new Set(['movement_categories','debts','debt_installments','agricultural_lots','agricultural_campaigns','agricultural_expenses','agricultural_harvests','agricultural_sales','assets','land','machinery','vehicles','other_assets','investments','investment_operations','investment_valuations','user_settings']);
+const ALLOWED=new Set(['movement_categories','payments','debts','debt_installments','agricultural_lots','agricultural_campaigns','agricultural_expenses','agricultural_harvests','agricultural_sales','assets','land','machinery','vehicles','other_assets','investments','investment_operations','investment_valuations','user_settings']);
 function token(request){return request.headers.get('cookie')?.match(/(?:^|;\s*)cf_access_token=([^;]+)/)?.[1]||''}
 async function supa(path,options={}){return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...options,headers:{apikey:SUPABASE_KEY,Authorization:options.authorization||'',Prefer:'return=representation',...options.headers}})}
 async function userId(t){const r=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${t}`}});if(!r.ok)return '';const u=await r.json();return u.id||''}
